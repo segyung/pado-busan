@@ -1,7 +1,17 @@
-# PADO GitHub Mobile Fix
+# PADO 2.0 Full Update
 
-모바일 GitHub 업로드용 평면 구조 버전입니다.
-모든 파일을 저장소 루트에 업로드하면 Netlify가 빌드할 수 있습니다.
+적용 기능
+- 공지사항 섹션 및 크루 공지 등록
+- 오늘의 번개 자동 생성(오전 9시 이후 접속 시 당일 번개 생성)
+- 밋업 참가/취소/대기 신청
+- 정원 초과 시 대기 등록, 취소 발생 시 1번 대기자 자동 승급
+- 마이페이지에서 내 밋업, 대기 순번, 오픈카톡 재입장, 신청 취소
+- 활동 점수, 성장 단계, 배지 시스템
+- 명예의 전당 랭킹
+- 현재 운영 기수 설정 및 지난 기수 신청 제한
 
-Build command: npm run build
-Publish directory: dist
+업로드 방법
+1. 이 ZIP을 압축 해제합니다.
+2. 안에 있는 파일들을 GitHub `pado-busan` 저장소 루트에 덮어씁니다.
+3. `PADO_1_1_Full_Update_Source.zip`처럼 ZIP 파일 자체는 저장소에 올리지 않습니다.
+4. Commit 하면 Netlify가 자동으로 배포합니다.

@@ -12,5 +12,7 @@
     "firebase": "latest",
     "qrcode": "latest"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "name": "pado-busan",
+  "version": "2.0.0"
 }
