@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 현재 프로젝트는 휴대폰+비밀번호 기반 프로토타입입니다.
+    // 운영 전 Firebase Auth 전환을 권장합니다.
+    match /members/{phone} {
+      allow read, write: if true;
+    }
+    match /meetups/{meetupId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -1,10 +1,268 @@
-import{useEffect,useMemo,useState}from"react";import{db,collection,doc,addDoc,updateDoc,onSnapshot,serverTimestamp}from"./firebase.js";import{currentGeneration,setCurrentGeneration}from"./member.js";
-const roleLabel={owner:"크루장",leader:"크루리더",crew:"크루",member:"멤버"};
-export default function Admin({crew}){const[members,setMembers]=useState([]),[meetups,setMeetups]=useState([]),[reviews,setReviews]=useState([]),[notices,setNotices]=useState([]),[tab,setTab]=useState("members"),[keyword,setKeyword]=useState(""),[gen,setGen]=useState(currentGeneration()),[notice,setNotice]=useState({title:"",body:""});useEffect(()=>{if(!crew)return;const u1=onSnapshot(collection(db,"members"),s=>setMembers(s.docs.map(d=>({id:d.id,...d.data()}))));const u2=onSnapshot(collection(db,"meetups"),s=>setMeetups(s.docs.map(d=>({id:d.id,...d.data()}))));const u3=onSnapshot(collection(db,"reviews"),s=>setReviews(s.docs.map(d=>({id:d.id,...d.data()}))));const u4=onSnapshot(collection(db,"notices"),s=>setNotices(s.docs.map(d=>({id:d.id,...d.data()}))));return()=>{u1();u2();u3();u4()}},[crew]);if(!crew)return <main className="page narrow"><section className="card center"><h1>크루 전용</h1><p className="muted">상단의 크루 버튼으로 로그인해 주세요.</p></section></main>;
-const pendingMembers=members.filter(m=>m.status==="pending"),approvedMembers=members.filter(m=>m.status==="approved"),pendingMeetups=meetups.filter(m=>m.status==="pending"),waiting=meetups.reduce((a,m)=>a+(m.waitlist?.length||0),0);const filtered=useMemo(()=>{const q=keyword.trim().toLowerCase();if(!q)return members;return members.filter(m=>[m.name,m.phone,m.homeArea,m.workArea,m.instagram,m.role,m.status].some(v=>String(v||"").toLowerCase().includes(q)))},[members,keyword]);const setRole=(id,role)=>updateDoc(doc(db,"members",id),{role});const setStatus=(id,status)=>updateDoc(doc(db,"members",id),{status});const approveMeetup=id=>updateDoc(doc(db,"meetups",id),{status:"approved"});const rejectMeetup=id=>updateDoc(doc(db,"meetups",id),{status:"rejected"});const closeMeetup=id=>updateDoc(doc(db,"meetups",id),{status:"closed"});const reopenMeetup=id=>updateDoc(doc(db,"meetups",id),{status:"approved"});const saveNotice=async()=>{if(!notice.title)return alert("공지 제목을 입력해 주세요.");await addDoc(collection(db,"notices"),{...notice,status:"published",createdAt:serverTimestamp()});setNotice({title:"",body:""});alert("공지 등록 완료")};const saveGen=()=>{setCurrentGeneration(gen);alert(`${gen}기로 설정했어요. 새 밋업은 이 기수로 저장됩니다.`)};const give=(m,key,amount)=>updateDoc(doc(db,"members",m.id),{[key]:Number(m[key]||0)+amount});
-return <main className="page"><div className="sectionTitle"><div><p className="eyebrow">CREW DASHBOARD</p><h1>크루 대시보드</h1><p className="muted">회원, 밋업, 공지, 활동 점수와 배지를 관리해요.</p></div></div><section className="dash"><article><span>회원 승인 대기</span><b>{pendingMembers.length}</b></article><article><span>밋업 승인 대기</span><b>{pendingMeetups.length}</b></article><article><span>승인 회원</span><b>{approvedMembers.length}</b></article><article><span>대기 인원</span><b>{waiting}</b></article></section><div className="tabs"><button className={tab==="members"?"active":""} onClick={()=>setTab("members")}>회원</button><button className={tab==="meetups"?"active":""} onClick={()=>setTab("meetups")}>밋업</button><button className={tab==="notices"?"active":""} onClick={()=>setTab("notices")}>공지</button><button className={tab==="score"?"active":""} onClick={()=>setTab("score")}>점수/배지</button><button className={tab==="settings"?"active":""} onClick={()=>setTab("settings")}>설정</button></div>
-{tab==="members"&&<section className="card"><div className="sectionTitle"><h2>가입 신청 / 회원 관리</h2><input value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="이름, 연락처, 지역 검색" style={{maxWidth:360}}/></div><div className="list">{filtered.map(m=><article className="item" key={m.id}><span className={`pill ${m.status==="pending"?"pending":m.status==="approved"?"approved":""}`}>{m.status==="pending"?"승인 대기":m.status==="approved"?"승인 완료":m.status==="suspended"?"활동정지":"반려"}</span><h3>{m.name}</h3><p className="meta">{m.gender} · {m.birthdate}<br/>🏠 {m.homeArea}<br/>☎️ {m.phone}<br/>권한: {roleLabel[m.role]||"멤버"}</p><div className="actions">{m.status==="pending"&&<button className="btn success" onClick={()=>setStatus(m.id,"approved")}>승인</button>}{m.status==="pending"&&<button className="btn danger" onClick={()=>setStatus(m.id,"rejected")}>거절</button>}{m.status!=="suspended"&&<button className="btn danger" onClick={()=>setStatus(m.id,"suspended")}>활동정지</button>}{m.status==="suspended"&&<button className="btn success" onClick={()=>setStatus(m.id,"approved")}>정지해제</button>}<select value={m.role||"member"} onChange={e=>setRole(m.id,e.target.value)} style={{maxWidth:170}}><option value="member">멤버</option><option value="crew">크루</option><option value="leader">크루리더</option><option value="owner">크루장</option></select></div></article>)}</div></section>}
-{tab==="meetups"&&<section className="card"><h2>밋업 관리</h2><div className="list">{meetups.map(m=><article className="item" key={m.id}><span className={`pill ${m.status==="pending"?"pending":m.status==="approved"?"approved":""}`}>{m.status||"대기"}</span><h3>{m.title}</h3><p className="meta">{m.date} {m.time}<br/>📍 {m.location}<br/>신청 {(m.participants||[]).length}{m.max?` / ${m.max}`:""}명 · 대기 {(m.waitlist||[]).length}명<br/>기수 {m.generation||currentGeneration()}기</p><div className="actions">{m.status==="pending"&&<button className="btn success" onClick={()=>approveMeetup(m.id)}>공개 승인</button>}{m.status==="pending"&&<button className="btn danger" onClick={()=>rejectMeetup(m.id)}>반려</button>}{m.status==="approved"&&<button className="btn danger" onClick={()=>closeMeetup(m.id)}>모집 마감</button>}{m.status==="closed"&&<button className="btn success" onClick={()=>reopenMeetup(m.id)}>다시 공개</button>}</div></article>)}</div></section>}
-{tab==="notices"&&<section className="card"><h2>공지사항 관리</h2><label>공지 제목</label><input value={notice.title} onChange={e=>setNotice(p=>({...p,title:e.target.value}))} placeholder="예) 활동 점수 관련 공지"/><label>공지 내용</label><textarea value={notice.body} onChange={e=>setNotice(p=>({...p,body:e.target.value}))} placeholder="멤버들에게 안내할 내용을 적어주세요."/><button className="btn primary" onClick={saveNotice}>공지 등록</button><div className="list" style={{marginTop:18}}>{notices.map(n=><article className="item" key={n.id}><h3>📌 {n.title}</h3><p>{n.body}</p></article>)}</div></section>}
-{tab==="score"&&<section className="card"><h2>점수 / 배지 지급</h2><p className="muted">운영진 보너스와 초대 수를 수동으로 지급할 수 있어요.</p><div className="list">{members.filter(m=>m.status==="approved").map(m=><article className="item" key={m.id}><h3>{m.name}</h3><p className="meta">보너스 {m.bonus||0}점 · 초대 {m.invited||0}명 · 수동 배지 {(m.badges||[]).join(", ")||"없음"}</p><div className="actions"><button className="btn" onClick={()=>give(m,"bonus",10)}>+10점</button><button className="btn" onClick={()=>give(m,"bonus",50)}>+50점</button><button className="btn" onClick={()=>give(m,"invited",1)}>초대 +1</button><button className="btn success" onClick={()=>{const badge=prompt("지급할 배지 이름");if(badge)updateDoc(doc(db,"members",m.id),{badges:[...(m.badges||[]),badge]})}}>배지 지급</button></div></article>)}</div></section>}
-{tab==="settings"&&<section className="card"><h2>운영 설정</h2><label>현재 운영 기수</label><input type="number" value={gen} onChange={e=>setGen(Number(e.target.value||1))}/><button className="btn primary" onClick={saveGen}>기수 저장</button><p className="muted">저장 후 새로 만드는 밋업은 해당 기수로 자동 저장돼요.</p></section>}</main>}
+import { useEffect, useMemo, useState } from "react";
+import { db, collection, doc, updateDoc, onSnapshot } from "../services/firebase.js";
+
+const roleLabel = {
+  owner: "크루장",
+  leader: "크루리더",
+  crew: "크루",
+  member: "멤버"
+};
+
+export default function Admin({ crew }) {
+  const [members, setMembers] = useState([]);
+  const [meetups, setMeetups] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [tab, setTab] = useState("members");
+  const [keyword, setKeyword] = useState("");
+
+  useEffect(() => {
+    if (!crew) return;
+    const u1 = onSnapshot(collection(db, "members"), s =>
+      setMembers(s.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+    const u2 = onSnapshot(collection(db, "meetups"), s =>
+      setMeetups(s.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+    const u3 = onSnapshot(collection(db, "reviews"), s =>
+      setReviews(s.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+    return () => { u1(); u2(); u3(); };
+  }, [crew]);
+
+  if (!crew) {
+    return (
+      <main className="page narrow">
+        <section className="card center">
+          <h1>크루 전용</h1>
+          <p className="muted">상단의 크루 버튼으로 로그인해 주세요.</p>
+          <p className="muted">크루 비밀번호는 운영진만 공유해 주세요.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const pendingMembers = members.filter(m => m.status === "pending");
+  const approvedMembers = members.filter(m => m.status === "approved");
+  const suspendedMembers = members.filter(m => m.status === "suspended");
+  const pendingMeetups = meetups.filter(m => m.status === "pending");
+
+  const filteredMembers = useMemo(() => {
+    const q = keyword.trim().toLowerCase();
+    if (!q) return members;
+    return members.filter(m =>
+      [m.name, m.phone, m.homeArea, m.workArea, m.instagram, m.role, m.status]
+        .some(v => String(v || "").toLowerCase().includes(q))
+    );
+  }, [members, keyword]);
+
+  const approveMember = id => updateDoc(doc(db, "members", id), { status: "approved" });
+  const rejectMember = id => updateDoc(doc(db, "members", id), { status: "rejected" });
+  const suspendMember = id => updateDoc(doc(db, "members", id), { status: "suspended" });
+  const restoreMember = id => updateDoc(doc(db, "members", id), { status: "approved" });
+  const setRole = (id, role) => updateDoc(doc(db, "members", id), { role });
+
+  const approveMeetup = id => updateDoc(doc(db, "meetups", id), { status: "approved" });
+  const rejectMeetup = id => updateDoc(doc(db, "meetups", id), { status: "rejected" });
+  const closeMeetup = id => updateDoc(doc(db, "meetups", id), { status: "closed" });
+  const reopenMeetup = id => updateDoc(doc(db, "meetups", id), { status: "approved" });
+
+  const hideReview = id => updateDoc(doc(db, "reviews", id), { status: "hidden" });
+  const showReview = id => updateDoc(doc(db, "reviews", id), { status: "approved" });
+  const recommendReview = id => updateDoc(doc(db, "reviews", id), { recommended: true });
+  const unrecommendReview = id => updateDoc(doc(db, "reviews", id), { recommended: false });
+
+  const crewMembers = members.filter(m => ["owner", "leader", "crew"].includes(m.role));
+
+  const csv = () => {
+    const rows = [
+      ["이름", "성별", "생년월일", "사는 곳", "직장 위치", "연락처", "상태", "권한", "인스타그램"],
+      ...members.map(m => [
+        m.name, m.gender, m.birthdate, m.homeArea, m.workArea, m.phone, m.status, roleLabel[m.role] || "멤버", m.instagram
+      ])
+    ];
+    const text = "\ufeff" + rows.map(r => r.map(v => `"${String(v || "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "text/csv" }));
+    a.download = "pado_members.csv";
+    a.click();
+  };
+
+  return (
+    <main className="page">
+      <div className="sectionTitle">
+        <div>
+          <p className="eyebrow">CREW DASHBOARD</p>
+          <h1>크루 대시보드</h1>
+          <p className="muted">회원 승인, 운영진 권한, 밋업, 후기까지 한 곳에서 관리해요.</p>
+        </div>
+        <button className="btn" onClick={csv}>CSV 다운로드</button>
+      </div>
+
+      <section className="dash">
+        <article><span>회원 승인 대기</span><b>{pendingMembers.length}</b></article>
+        <article><span>밋업 승인 대기</span><b>{pendingMeetups.length}</b></article>
+        <article><span>승인 회원</span><b>{approvedMembers.length}</b></article>
+        <article><span>활동정지</span><b>{suspendedMembers.length}</b></article>
+      </section>
+
+      <div className="tabs">
+        <button className={tab === "members" ? "active" : ""} onClick={() => setTab("members")}>회원 승인</button>
+        <button className={tab === "crew" ? "active" : ""} onClick={() => setTab("crew")}>운영진 관리</button>
+        <button className={tab === "meetups" ? "active" : ""} onClick={() => setTab("meetups")}>밋업 관리</button>
+        <button className={tab === "reviews" ? "active" : ""} onClick={() => setTab("reviews")}>후기 관리</button>
+        <button className={tab === "stats" ? "active" : ""} onClick={() => setTab("stats")}>운영 통계</button>
+      </div>
+
+      {tab === "members" && (
+        <section className="card">
+          <div className="sectionTitle">
+            <h2>가입 신청 / 회원 관리</h2>
+            <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="이름, 연락처, 지역 검색" style={{ maxWidth: 360 }} />
+          </div>
+          <div className="list">
+            {filteredMembers.length ? filteredMembers.map(m => (
+              <article className="item" key={m.id}>
+                <span className={`pill ${m.status === "pending" ? "pending" : m.status === "approved" ? "approved" : ""}`}>
+                  {m.status === "pending" ? "승인 대기" : m.status === "approved" ? "승인 완료" : m.status === "suspended" ? "활동정지" : "반려"}
+                </span>
+                <h3>{m.name}</h3>
+                <p className="meta">
+                  {m.gender} · {m.birthdate}<br />
+                  🏠 {m.homeArea}<br />
+                  💼 {m.workArea || "직장 위치 미입력"}<br />
+                  ☎️ {m.phone}<br />
+                  📷 {m.instagram || "인스타그램 미입력"}<br />
+                  권한: {roleLabel[m.role] || "멤버"}
+                </p>
+                {m.note && <p>{m.note}</p>}
+                <div className="actions">
+                  {m.status === "pending" && <button className="btn success" onClick={() => approveMember(m.id)}>승인</button>}
+                  {m.status === "pending" && <button className="btn danger" onClick={() => rejectMember(m.id)}>거절</button>}
+                  {m.status !== "suspended" && <button className="btn danger" onClick={() => suspendMember(m.id)}>활동정지</button>}
+                  {m.status === "suspended" && <button className="btn success" onClick={() => restoreMember(m.id)}>정지해제</button>}
+                  <select value={m.role || "member"} onChange={e => setRole(m.id, e.target.value)} style={{ maxWidth: 170 }}>
+                    <option value="member">멤버</option>
+                    <option value="crew">크루</option>
+                    <option value="leader">크루리더</option>
+                    <option value="owner">크루장</option>
+                  </select>
+                </div>
+              </article>
+            )) : <p className="muted">검색 결과가 없어요.</p>}
+          </div>
+        </section>
+      )}
+
+      {tab === "crew" && (
+        <section className="card">
+          <h2>운영진 관리</h2>
+          <p className="muted">
+            권한 기준: 크루장은 전체 관리, 크루리더는 회원/밋업 관리, 크루는 밋업/후기 중심으로 운영하는 구조를 추천해요.
+          </p>
+          <div className="list">
+            {crewMembers.length ? crewMembers.map(m => (
+              <article className="item" key={m.id}>
+                <h3>{m.name}</h3>
+                <p className="meta">{roleLabel[m.role]} · {m.phone}<br />🏠 {m.homeArea}</p>
+                <div className="actions">
+                  <select value={m.role || "member"} onChange={e => setRole(m.id, e.target.value)} style={{ maxWidth: 170 }}>
+                    <option value="crew">크루</option>
+                    <option value="leader">크루리더</option>
+                    <option value="owner">크루장</option>
+                    <option value="member">운영진 해제</option>
+                  </select>
+                </div>
+              </article>
+            )) : <p className="muted">아직 지정된 운영진이 없어요. 회원 관리 탭에서 권한을 지정해 주세요.</p>}
+          </div>
+        </section>
+      )}
+
+      {tab === "meetups" && (
+        <section className="card">
+          <h2>밋업 관리</h2>
+          <div className="list">
+            {meetups.length ? meetups.map(m => (
+              <article className="item" key={m.id}>
+                <span className={`pill ${m.status === "pending" ? "pending" : m.status === "approved" ? "approved" : ""}`}>
+                  {m.status || "대기"}
+                </span>
+                <h3>{m.title}</h3>
+                <p className="meta">
+                  {m.date} {m.time}<br />
+                  📍 {m.location}<br />
+                  밋업장: {m.host}<br />
+                  신청 {(m.participants || []).length}{m.max ? ` / ${m.max}` : ""}명
+                </p>
+                {m.desc && <p>{m.desc}</p>}
+                <div className="actions">
+                  {m.status === "pending" && <button className="btn success" onClick={() => approveMeetup(m.id)}>공개 승인</button>}
+                  {m.status === "pending" && <button className="btn danger" onClick={() => rejectMeetup(m.id)}>반려</button>}
+                  {m.status === "approved" && <button className="btn danger" onClick={() => closeMeetup(m.id)}>모집 마감</button>}
+                  {m.status === "closed" && <button className="btn success" onClick={() => reopenMeetup(m.id)}>다시 공개</button>}
+                </div>
+              </article>
+            )) : <p className="muted">등록된 밋업이 없어요.</p>}
+          </div>
+        </section>
+      )}
+
+      {tab === "reviews" && (
+        <section className="card">
+          <h2>후기 관리</h2>
+          <div className="list">
+            {reviews.length ? reviews.map(r => (
+              <article className="item" key={r.id}>
+                <span className={`pill ${r.status === "hidden" ? "pending" : "approved"}`}>
+                  {r.status === "hidden" ? "숨김" : "공개"}
+                </span>
+                {r.recommended && <span className="pill orange" style={{ marginLeft: 6 }}>추천 후기</span>}
+                <h3>{r.meetupTitle || "파도 후기"}</h3>
+                <p>{r.text}</p>
+                <p className="meta">by {r.memberName || "익명"}</p>
+                {!!r.photoUrls?.length && (
+                  <div className="photoGrid">
+                    {r.photoUrls.map((url, i) => <a key={i} href={url} target="_blank"><img src={url} /></a>)}
+                  </div>
+                )}
+                <div className="actions">
+                  {r.status === "hidden"
+                    ? <button className="btn success" onClick={() => showReview(r.id)}>다시 공개</button>
+                    : <button className="btn danger" onClick={() => hideReview(r.id)}>숨김</button>}
+                  {r.recommended
+                    ? <button className="btn" onClick={() => unrecommendReview(r.id)}>추천 해제</button>
+                    : <button className="btn primary" onClick={() => recommendReview(r.id)}>추천 후기</button>}
+                </div>
+              </article>
+            )) : <p className="muted">아직 후기가 없어요.</p>}
+          </div>
+        </section>
+      )}
+
+      {tab === "stats" && (
+        <section className="grid two">
+          <article className="card">
+            <h2>운영 요약</h2>
+            <p className="meta">
+              전체 회원: {members.length}명<br />
+              승인 회원: {approvedMembers.length}명<br />
+              승인 대기: {pendingMembers.length}명<br />
+              활동정지: {suspendedMembers.length}명<br />
+              운영진: {crewMembers.length}명
+            </p>
+          </article>
+          <article className="card">
+            <h2>활동 요약</h2>
+            <p className="meta">
+              전체 밋업: {meetups.length}개<br />
+              공개 밋업: {meetups.filter(m => m.status === "approved").length}개<br />
+              승인 대기 밋업: {pendingMeetups.length}개<br />
+              전체 후기: {reviews.length}개<br />
+              추천 후기: {reviews.filter(r => r.recommended).length}개
+            </p>
+          </article>
+        </section>
+      )}
+    </main>
+  );
+}
