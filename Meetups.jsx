@@ -100,7 +100,7 @@ export default function Meetups({ approved, member, requireApproved, crew }) {
       const current = meetups.find(m => m.id === editingId);
       const participantCount = current?.participants?.length || 0;
       const nextStatus = data.isLightning
-        ? participantCount >= Number(data.min || 3) ? "approved" : "lightning"
+        ? "lightning"
         : current?.status === "approved" || crew ? "approved" : "pending";
 
       await updateDoc(doc(db, "meetups", editingId), {
@@ -117,7 +117,7 @@ export default function Meetups({ approved, member, requireApproved, crew }) {
         createdAt: serverTimestamp()
       });
       alert(data.isLightning
-        ? "⚡ 오늘의 번개가 등록됐어요. 3명이 차면 밋업으로 전환돼요."
+        ? "⚡ 오늘의 번개가 등록됐어요."
         : "🌊 밋업이 승인 대기로 등록됐어요."
       );
     }
@@ -142,25 +142,11 @@ export default function Meetups({ approved, member, requireApproved, crew }) {
       return;
     }
 
-    const currentCount = (m.participants || []).length;
-    const min = Number(m.min || 3);
-    const nextCount = currentCount + 1;
-    const shouldConvert = m.status === "lightning" && nextCount >= min;
-
     await updateDoc(doc(db, "meetups", m.id), {
-      participants: arrayUnion({ phone, name: member?.name || "", checkedIn: false, joinedAt: Date.now() }),
-      ...(shouldConvert ? {
-        status: "approved",
-        isLightning: false,
-        convertedFromLightning: true,
-        convertedAt: serverTimestamp()
-      } : {})
+      participants: arrayUnion({ phone, name: member?.name || "", checkedIn: false, joinedAt: Date.now() })
     });
 
-    alert(shouldConvert
-      ? "🌊 3명이 모였어요! 오늘의 번개가 정식 밋업으로 전환됐습니다."
-      : "🌊 이번 항해에 함께합니다."
-    );
+    alert("🌊 이번 항해에 함께합니다.");
     if (m.kakao && confirm("오픈채팅방으로 이동할까요?")) window.open(m.kakao, "_blank");
   }
 
@@ -181,10 +167,10 @@ export default function Meetups({ approved, member, requireApproved, crew }) {
         <div>
           <p className="eyebrow">MEETUP</p>
           <h1>다가오는 밋업</h1>
-          <p className="muted">오늘의 번개는 3명이 모이면 자동으로 정식 밋업으로 넘어가요.</p>
+          <p className="muted">오늘의 번개는 운영진이 수동으로 등록해요.</p>
         </div>
         <div className="actions">
-          <button className="btn" onClick={() => approved ? openCreate(today) : requireApproved("meetups", "오늘의 번개 만들기는 승인 완료 후 이용할 수 있어요.")}>⚡ 오늘의 번개</button>
+          <button className="btn" onClick={() => crew ? openCreate(today) : alert("오늘의 번개는 운영진만 등록할 수 있어요.")}>⚡ 오늘의 번개</button>
           <button className="btn primary" onClick={() => approved ? openCreate() : requireApproved("meetups", "밋업 만들기는 승인 완료 후 이용할 수 있어요.")}>📅 밋업 만들기</button>
         </div>
       </div>
@@ -244,7 +230,7 @@ export default function Meetups({ approved, member, requireApproved, crew }) {
       <div className={`modal ${open ? "open" : ""}`}>
         <div className="sheet">
           <h2>{editingId ? "밋업 수정하기" : "새 밋업 만들기"}</h2>
-          <p className="muted">오늘의 번개는 최소 인원 3명을 기준으로 운영되고, 3명이 모이면 정식 밋업으로 자동 전환돼요. 지난 날짜에는 새 밋업을 만들 수 없어요.</p>
+          <p className="muted">오늘의 번개는 운영진이 수동으로 등록해요. 지난 날짜에는 새 밋업을 만들 수 없어요.</p>
           <label>밋업명</label>
           <input value={form.title} onChange={e => update("title", e.target.value)} placeholder="예) 퇴근 후 저녁 먹으실 분?" />
           <div className="row"><div><label>날짜</label><input type="date" min={today} value={form.date} onChange={e => update("date", e.target.value)} /></div><div><label>시간</label><input type="time" value={form.time} onChange={e => update("time", e.target.value)} /></div></div>
@@ -265,14 +251,13 @@ export default function Meetups({ approved, member, requireApproved, crew }) {
 function MeetupCard({ m, joinMeetup, crew, openEdit }) {
   const count = (m.participants || []).length;
   const min = Number(m.min || 3);
-  const isLightning = m.status === "lightning";
-  const label = isLightning ? `오늘의 번개 · ${count}/${min}명` : m.convertedFromLightning ? "번개 → 밋업" : m.status === "closed" ? "모집 마감" : "공개 밋업";
+  const isLightning = m.status === "lightning" || !!m.isLightning;
+  const label = isLightning ? `오늘의 번개 · ${count}명 참여` : m.status === "closed" ? "모집 마감" : "공개 밋업";
   return (
     <article className={`item ${isLightning ? "lightningItem" : ""}`}>
       <span className={`pill ${isLightning ? "orange" : m.status === "closed" ? "pending" : "approved"}`}>{label}</span>
       <h3>{m.title}</h3>
       <p className="meta">{m.date} {m.time}<br /><a href={`https://map.naver.com/p/search/${encodeURIComponent(m.location || "")}`} target="_blank">📍 {m.location}</a><br />밋업장: {m.host} · 신청 {count}{m.max ? ` / ${m.max}` : ""}명</p>
-      {isLightning && <div className="convertBox">⚡ {Math.max(min - count, 0)}명만 더 모이면 정식 밋업으로 넘어가요.</div>}
       {m.desc && <p>{m.desc}</p>}
       <div className="actions">
         <button className="btn primary" onClick={() => joinMeetup(m)} disabled={m.status === "closed"}>{m.status === "closed" ? "모집 마감" : "참가 신청"}</button>

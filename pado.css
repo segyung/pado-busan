@@ -71,3 +71,13 @@ button:disabled{opacity:.55;cursor:not-allowed}
 
 /* My schedule */
 .myScheduleHero{margin-bottom:18px}.scheduleTabs{margin-top:18px}.scheduleCard{display:grid;grid-template-columns:110px 1fr;gap:18px;align-items:start}.scheduleDateBox{border:1px solid var(--line);border-radius:18px;background:#f8fbff;padding:16px;text-align:center}.scheduleDateBox strong{display:block;font-size:26px;color:#063b74}.scheduleDateBox span{display:block;margin-top:6px;color:var(--muted);font-weight:900}.scheduleBody h3{margin-top:8px}.pastSchedule{background:#f7f9fb;color:#7a8896}.pastSchedule .scheduleDateBox{background:#eef3f7}@media(max-width:760px){.scheduleCard{grid-template-columns:1fr}.scheduleDateBox{text-align:left}.scheduleDateBox strong{font-size:22px}}
+
+/* Final header visibility fix */
+.topbar nav{align-items:center;justify-content:flex-end}
+.topbar nav button{white-space:nowrap}
+@media(max-width:760px){
+  .topbar{align-items:stretch;gap:10px}
+  .topbar nav{width:100%;display:flex;flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .topbar nav button{flex:0 0 auto;padding:10px 11px}
+  .brand{align-self:flex-start}
+}

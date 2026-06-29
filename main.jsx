@@ -11,6 +11,7 @@ import Profile from "./pages/Profile.jsx";
 import Admin from "./pages/Admin.jsx";
 import HallOfFame from "./pages/HallOfFame.jsx";
 import Pending from "./pages/Pending.jsx";
+import Notices from "./pages/Notices.jsx";
 import Rejected from "./pages/Rejected.jsx";
 import { db, doc, getDoc } from "./services/firebase.js";
 import { getSessionPhone, clearSessionPhone, isCrew, setCrew } from "./utils/member.js";
@@ -120,23 +121,18 @@ function App() {
     <>
       <header className="topbar">
         <button className="brand" onClick={() => go("home")}>🌊 <b>파도</b></button>
-
-        <div className="headerAuth">
-          {!member ? (
-            <button className="loginAlwaysBtn" onClick={() => goAuth("login")}>로그인</button>
-          ) : (
-            <button className="loginAlwaysBtn" onClick={() => requireApproved("profile", "마이페이지는 승인 완료 후 이용할 수 있어요.")}>👤 마이페이지</button>
-          )}
-        </div>
-
         <nav>
           <button onClick={() => go("meetups")}>밋업</button>
           {member && <button onClick={() => requireApproved("my-schedule", "내 일정은 승인 완료 후 이용할 수 있어요.")}>내 일정</button>}
           <button onClick={() => go("reviews")}>후기</button>
+          <button onClick={() => go("notices")}>공지</button>
           <button onClick={() => go("hall")}>명예의 전당</button>
 
           {!member && (
-            <button className="joinBtn" onClick={() => goAuth("signup")}>회원가입</button>
+            <>
+              <button onClick={() => goAuth("login")}>로그인</button>
+              <button className="joinBtn" onClick={() => goAuth("signup")}>회원가입</button>
+            </>
           )}
 
           {member && (
@@ -165,6 +161,7 @@ function App() {
       {route === "meetups" && <Meetups {...ctx} />}
       {route === "my-schedule" && <MySchedule {...ctx} />}
       {route === "reviews" && <Reviews {...ctx} />}
+      {route === "notices" && <Notices {...ctx} />}
       {route === "profile" && (approved || crew ? <Profile {...ctx} /> : pending ? <Pending {...ctx} /> : rejected ? <Rejected {...ctx} /> : <Profile {...ctx} />)}
       {route === "pending" && <Pending {...ctx} />}
       {route === "rejected" && <Rejected {...ctx} />}
